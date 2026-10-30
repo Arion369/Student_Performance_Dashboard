@@ -1,0 +1,26 @@
+Rank,Student,Python,SQL,Power BI,AI,Attendance,Total,Average,Grade,Best Subject,Weakest Subject,Status,Imputed
+1,Queen,94,96,95,98,100,383,95.75,A+,AI,Python,On Track,
+2,Xavier,93,94,97,95,98,379,94.75,A+,Power BI,Python,On Track,
+3,Grace,92,95,94,96,99,377,94.25,A+,AI,Python,On Track,
+4,Sophia,89,91,93,90,92,363,90.75,A+,Power BI,Python,On Track,Attendance
+5,Kevin,91,88,90,92,96,361,90.25,A+,AI,SQL,On Track,
+6,Emma,88,90,91,89,97,358,89.5,A,Power BI,Python,On Track,
+7,Nancy,87,89,89,91,95,356,89.0,A,AI,Python,On Track,SQL
+8,Charlie,90,85,87,93,98,355,88.75,A,AI,SQL,On Track,
+9,Victor,86,83,88,87,94,344,86.0,A,Power BI,SQL,On Track,
+10,Alice,85,78,92,88,95,343,85.75,A,Power BI,SQL,On Track,
+11,Zara,82,85,84,86,92,337,84.25,A,AI,Python,On Track,Attendance
+12,Ivy,84,80,86,85,94,335,83.75,A,Power BI,SQL,On Track,
+13,Laura,83,79,85,84,93,331,82.75,A,Power BI,SQL,On Track,
+13,Ryan,81,84,83,83,92,331,82.75,A,SQL,Python,On Track,AI
+15,Michael,80,82,80,78,88,320,80.0,A,SQL,AI,On Track,Python
+16,Jack,78,76,82,81,90,317,79.25,B,Power BI,SQL,On Track,
+16,Uma,79,77,81,80,89,317,79.25,B,Power BI,SQL,On Track,Python
+18,William,79,78,76,78,91,311,77.75,B,Python,Power BI,On Track,SQL
+19,Frank,75,74,79,80,91,308,77.0,B,AI,SQL,On Track,
+20,Oliver,76,73,75,77,90,301,75.25,B,AI,SQL,On Track,Power BI
+21,Bob,72,81,70,75,89,298,74.5,B,SQL,Power BI,Needs Improvement,
+22,Thomas,74,69,72,75,84,290,72.5,B,AI,SQL,Needs Improvement,
+23,Henry,68,72,75,70,87,285,71.25,B,Power BI,Python,Needs Improvement,
+23,Peter,69,71,74,71,86,285,71.25,B,Power BI,Python,Needs Improvement,AI
+25,David,65,70,68,72,85,275,68.75,C,AI,Python,Needs Improvement,

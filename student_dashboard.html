@@ -1,0 +1,561 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Student Performance Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<style>
+  :root {
+    --bg: #f4f6fb; --card: #ffffff; --text: #111827; --muted: #6b7280; --border: #e5e7eb; --grid: #eef0f4;
+    --accent: #4f46e5; --accent-soft: #eef2ff; --gold: #d97706; --gold-soft: #fef3c7;
+    --good: #059669; --bad: #dc2626; --bad-soft: #fee2e2; --shadow: 0 1px 3px rgba(17,24,39,.06), 0 4px 14px rgba(17,24,39,.04);
+  }
+  :root[data-theme="dark"] {
+    --bg: #0b1120; --card: #131c2e; --text: #e5e7eb; --muted: #94a3b8; --border: #243049; --grid: #1e293b;
+    --accent: #818cf8; --accent-soft: #1e1b4b; --gold: #fbbf24; --gold-soft: #3a2a07;
+    --good: #34d399; --bad: #f87171; --bad-soft: #3b1212; --shadow: 0 1px 3px rgba(0,0,0,.4);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: Inter, "Segoe UI", system-ui, sans-serif; background: var(--bg); color: var(--text);
+         font-size: 14px; line-height: 1.5; transition: background .2s, color .2s; }
+  header { position: sticky; top: 0; z-index: 10; background: var(--card); border-bottom: 1px solid var(--border);
+           display: flex; align-items: center; gap: 16px; padding: 10px 24px; flex-wrap: wrap; }
+  .brand { font-weight: 700; font-size: 17px; display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+  .brand small { font-weight: 500; color: var(--muted); font-size: 12px; }
+  nav { display: flex; gap: 4px; overflow-x: auto; flex: 1; min-width: 0; }
+  html, body { overflow-x: hidden; }
+  nav button, .btn { border: 1px solid transparent; background: transparent; color: var(--muted); font: inherit; font-weight: 500;
+                     padding: 7px 14px; border-radius: 8px; cursor: pointer; white-space: nowrap; }
+  nav button:hover { background: var(--accent-soft); color: var(--text); }
+  nav button.active { background: var(--accent); color: #fff; }
+  .actions { display: flex; gap: 6px; }
+  .btn { border-color: var(--border); color: var(--text); background: var(--card); }
+  .btn:hover { border-color: var(--accent); }
+  main { max-width: 1320px; margin: 0 auto; padding: 22px 24px 40px; }
+  h2 { margin: 0 0 4px; font-size: 22px; }
+  .lead { color: var(--muted); margin: 0 0 18px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 16px 18px; box-shadow: var(--shadow); }
+  .card h3 { margin: 0 0 10px; font-size: 15px; }
+  .grid { display: grid; gap: 16px; margin-bottom: 16px; }
+  .g2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .g-side { grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); }
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 16px; }
+  .kpi { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 14px 16px; box-shadow: var(--shadow);
+         border-top: 3px solid var(--c, var(--accent)); }
+  .kpi-label { color: var(--muted); font-size: 12.5px; display: flex; gap: 6px; align-items: center; }
+  .kpi-value { font-size: 26px; font-weight: 700; margin: 2px 0; letter-spacing: -.02em; }
+  .kpi-sub { color: var(--muted); font-size: 12px; }
+  .chart { width: 100%; height: 360px; }
+  .chart.tall { height: 640px; }
+  .chart.short { height: 280px; }
+  .topper { display: flex; align-items: center; gap: 16px; background: linear-gradient(90deg, var(--gold-soft), var(--card));
+            border: 1px solid var(--border); border-left: 5px solid var(--gold); border-radius: 14px; padding: 14px 18px; margin-bottom: 16px; }
+  .topper .trophy { font-size: 34px; }
+  .topper b { font-size: 18px; }
+  .controls { display: flex; flex-wrap: wrap; gap: 14px; align-items: end; margin-bottom: 16px; }
+  .field { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); font-weight: 500; }
+  select, input[type=search] { font: inherit; color: var(--text); background: var(--card); border: 1px solid var(--border);
+                               border-radius: 8px; padding: 7px 10px; min-width: 160px; }
+  input[type=range] { width: 170px; accent-color: var(--accent); }
+  .field output { color: var(--text); font-weight: 600; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { padding: 8px 10px; border-bottom: 1px solid var(--border); text-align: left; white-space: nowrap; }
+  th { color: var(--muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+  #rankTable th { cursor: pointer; user-select: none; }
+  th.sorted::after { content: attr(data-dir); margin-left: 4px; color: var(--accent); }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  #rankTable tbody tr { cursor: pointer; }
+  tbody tr:hover { background: var(--accent-soft); }
+  tr.is-topper { background: var(--gold-soft); font-weight: 600; }
+  tr.is-lowest { background: var(--bad-soft); }
+  .table-wrap { overflow-x: auto; }
+  .pill { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 600; color: #fff; }
+  .tag { display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: 12px; background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+  .tag.warn { background: var(--bad-soft); color: var(--bad); }
+  .tag.ok { background: rgba(5, 150, 105, .14); color: var(--good); }
+  .profile { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; margin-top: 12px; }
+  .stat { background: var(--bg); border-radius: 10px; padding: 10px 12px; }
+  .stat span { display: block; color: var(--muted); font-size: 12px; }
+  .stat strong { font-size: 18px; }
+  .name { font-size: 24px; font-weight: 700; margin: 0; }
+  .insights { margin: 0; padding-left: 18px; }
+  .insights li { margin: 6px 0; }
+  .muted { color: var(--muted); }
+  .count { color: var(--muted); font-size: 13px; margin-bottom: 8px; }
+  footer { text-align: center; color: var(--muted); font-size: 12px; padding: 0 24px 28px; }
+  [hidden] { display: none !important; }
+  @media (max-width: 960px) { .g2, .g-side { grid-template-columns: 1fr; } main { padding: 16px; } header { padding: 10px 16px; } }
+  @media (max-width: 640px) {
+    header { gap: 8px; }
+    nav { order: 3; flex: 1 0 100%; }
+    .actions { margin-left: auto; }
+    .brand small { display: none; }
+    .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .topper { gap: 10px; }
+  }
+  @media print {
+    header nav, .actions, .controls { display: none !important; }
+    body { background: #fff; }
+    .card, .kpi { box-shadow: none; break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">🎓 Student Performance <small>Class dashboard</small></div>
+  <nav id="tabs">
+    <button data-tab="overview">Overview</button>
+    <button data-tab="student">Student</button>
+    <button data-tab="compare">Compare</button>
+    <button data-tab="rankings">Rankings</button>
+    <button data-tab="quality">Data Quality</button>
+  </nav>
+  <div class="actions">
+    <button class="btn" id="themeBtn" title="Switch theme">🌙 Dark</button>
+    <button class="btn" id="csvBtn" title="Download the processed dataset">⬇ CSV</button>
+    <button class="btn" id="printBtn" title="Print or save this page as PDF">🖨 PDF</button>
+  </div>
+</header>
+
+<main>
+  <!-- ============================== OVERVIEW ============================== -->
+  <section class="page" id="overview">
+    <h2>Class Overview</h2>
+    <p class="lead"></p>
+    <div class="kpis" id="kpis"></div>
+    <div class="topper" id="topperBanner"></div>
+    <div class="grid g2">
+      <div class="card"><div id="chSubjectAvg" class="chart"></div></div>
+      <div class="card"><div id="chGrade" class="chart"></div></div>
+    </div>
+    <div class="grid g2">
+      <div class="card"><div id="chScatter" class="chart"></div></div>
+      <div class="card"><div id="chHist" class="chart"></div></div>
+    </div>
+    <div class="grid g-side">
+      <div class="card"><h3>💡 Insights</h3><ul class="insights" id="insights"></ul></div>
+      <div class="card"><div id="chHeat" class="chart tall"></div></div>
+    </div>
+  </section>
+
+  <!-- ============================== STUDENT ============================== -->
+  <section class="page" id="student" hidden>
+    <h2>Student Profile</h2>
+    <p class="lead">Pick a student to see every mark next to the class average.</p>
+    <div class="controls">
+      <label class="field">Student<select id="studentSel"></select></label>
+    </div>
+    <div class="card" style="margin-bottom:16px" id="profile"></div>
+    <div class="grid g2">
+      <div class="card"><div id="chStudentBar" class="chart"></div></div>
+      <div class="card"><div id="chStudentRadar" class="chart"></div></div>
+    </div>
+    <div class="card"><div id="chStudentAtt" class="chart short"></div></div>
+  </section>
+
+  <!-- ============================== COMPARE ============================== -->
+  <section class="page" id="compare" hidden>
+    <h2>Compare Students &amp; Subjects</h2>
+    <p class="lead">Put two students side by side, or look at one subject across the whole class.</p>
+    <div class="controls">
+      <label class="field">Student A<select id="cmpA"></select></label>
+      <label class="field">Student B<select id="cmpB"></select></label>
+      <label class="field">Subject<select id="cmpSubject"></select></label>
+    </div>
+    <div class="grid g2">
+      <div class="card"><div id="chCompareBar" class="chart"></div></div>
+      <div class="card"><div id="chCompareRadar" class="chart"></div></div>
+    </div>
+    <div class="card" style="margin-bottom:16px"><div id="chSubjectLine" class="chart"></div></div>
+    <div class="grid g2">
+      <div class="card"><div id="chBox" class="chart"></div></div>
+      <div class="card"><div id="chArea" class="chart"></div></div>
+    </div>
+  </section>
+
+  <!-- ============================== RANKINGS ============================== -->
+  <section class="page" id="rankings" hidden>
+    <h2>Rankings, Search &amp; Filters</h2>
+    <p class="lead">Results update as you type. Click a column header or use "Sort by". Click a row to open that student's profile.</p>
+    <div class="card" style="margin-bottom:16px">
+      <div class="controls" style="margin-bottom:0">
+        <label class="field">Search<input type="search" id="search" placeholder="Type a name…"></label>
+        <label class="field">Min average: <output id="minAvgOut"></output><input type="range" id="minAvg" min="60" max="100" step="1" value="60"></label>
+        <label class="field">Min attendance: <output id="minAttOut"></output><input type="range" id="minAtt" min="80" max="100" step="1" value="80"></label>
+        <label class="field">Grade<select id="gradeSel"></select></label>
+        <label class="field">Sort by<select id="sortSel"></select></label>
+        <label class="field">Order<select id="orderSel"><option value="asc">Ascending</option><option value="desc">Descending</option></select></label>
+        <label class="field">Chart metric<select id="metricSel"></select></label>
+        <button class="btn" id="resetBtn">Reset</button>
+      </div>
+    </div>
+    <div class="card" style="margin-bottom:16px"><div id="chRank" class="chart"></div></div>
+    <div class="card">
+      <div class="count" id="rankCount"></div>
+      <div class="table-wrap"><table id="rankTable"></table></div>
+    </div>
+  </section>
+
+  <!-- ============================== QUALITY ============================== -->
+  <section class="page" id="quality" hidden>
+    <h2>Data Quality Report</h2>
+    <p class="lead">What was wrong with the raw CSV and how each problem was fixed.</p>
+    <div class="kpis" id="qualityKpis"></div>
+    <div class="grid g2">
+      <div class="card"><h3>Validation: raw vs cleaned</h3><div class="table-wrap"><table id="validationTable"></table></div></div>
+      <div class="card"><h3>Cleaning rules</h3>
+        <ul class="insights">
+          <li><b>Null subject mark</b> → replaced with the student's mean of their other valid subjects.</li>
+          <li><b>0 subject mark</b> → treated as invalid (absent or entry error) and filled the same way.</li>
+          <li><b>Null or 0 attendance</b> → replaced with the class median attendance.</li>
+          <li><b>Duplicates</b> → exact duplicate rows and repeated names are removed (none found).</li>
+          <li><b>Outliers</b> → flagged with the 1.5 × IQR rule. Genuine scores are kept.</li>
+        </ul>
+      </div>
+    </div>
+    <div class="card"><h3>Corrected values</h3><div class="table-wrap"><table id="issueTable"></table></div></div>
+  </section>
+</main>
+<footer id="footer"></footer>
+
+<script>
+const D = {"generated": "30 Oct 2026, 10:02", "subjects": ["Python", "SQL", "Power BI", "AI"], "grades": ["A+", "A", "B", "C", "D", "F"], "thresholds": {"high": 85, "low": 60}, "students": [{"Rank": 1, "Student": "Queen", "Python": 94, "SQL": 96, "Power BI": 95, "AI": 98, "Attendance": 100, "Total": 383, "Average": 95.75, "Grade": "A+", "Best Subject": "AI", "Weakest Subject": "Python", "Status": "On Track", "Imputed": ""}, {"Rank": 2, "Student": "Xavier", "Python": 93, "SQL": 94, "Power BI": 97, "AI": 95, "Attendance": 98, "Total": 379, "Average": 94.75, "Grade": "A+", "Best Subject": "Power BI", "Weakest Subject": "Python", "Status": "On Track", "Imputed": ""}, {"Rank": 3, "Student": "Grace", "Python": 92, "SQL": 95, "Power BI": 94, "AI": 96, "Attendance": 99, "Total": 377, "Average": 94.25, "Grade": "A+", "Best Subject": "AI", "Weakest Subject": "Python", "Status": "On Track", "Imputed": ""}, {"Rank": 4, "Student": "Sophia", "Python": 89, "SQL": 91, "Power BI": 93, "AI": 90, "Attendance": 92, "Total": 363, "Average": 90.75, "Grade": "A+", "Best Subject": "Power BI", "Weakest Subject": "Python", "Status": "On Track", "Imputed": "Attendance"}, {"Rank": 5, "Student": "Kevin", "Python": 91, "SQL": 88, "Power BI": 90, "AI": 92, "Attendance": 96, "Total": 361, "Average": 90.25, "Grade": "A+", "Best Subject": "AI", "Weakest Subject": "SQL", "Status": "On Track", "Imputed": ""}, {"Rank": 6, "Student": "Emma", "Python": 88, "SQL": 90, "Power BI": 91, "AI": 89, "Attendance": 97, "Total": 358, "Average": 89.5, "Grade": "A", "Best Subject": "Power BI", "Weakest Subject": "Python", "Status": "On Track", "Imputed": ""}, {"Rank": 7, "Student": "Nancy", "Python": 87, "SQL": 89, "Power BI": 89, "AI": 91, "Attendance": 95, "Total": 356, "Average": 89.0, "Grade": "A", "Best Subject": "AI", "Weakest Subject": "Python", "Status": "On Track", "Imputed": "SQL"}, {"Rank": 8, "Student": "Charlie", "Python": 90, "SQL": 85, "Power BI": 87, "AI": 93, "Attendance": 98, "Total": 355, "Average": 88.75, "Grade": "A", "Best Subject": "AI", "Weakest Subject": "SQL", "Status": "On Track", "Imputed": ""}, {"Rank": 9, "Student": "Victor", "Python": 86, "SQL": 83, "Power BI": 88, "AI": 87, "Attendance": 94, "Total": 344, "Average": 86.0, "Grade": "A", "Best Subject": "Power BI", "Weakest Subject": "SQL", "Status": "On Track", "Imputed": ""}, {"Rank": 10, "Student": "Alice", "Python": 85, "SQL": 78, "Power BI": 92, "AI": 88, "Attendance": 95, "Total": 343, "Average": 85.75, "Grade": "A", "Best Subject": "Power BI", "Weakest Subject": "SQL", "Status": "On Track", "Imputed": ""}, {"Rank": 11, "Student": "Zara", "Python": 82, "SQL": 85, "Power BI": 84, "AI": 86, "Attendance": 92, "Total": 337, "Average": 84.25, "Grade": "A", "Best Subject": "AI", "Weakest Subject": "Python", "Status": "On Track", "Imputed": "Attendance"}, {"Rank": 12, "Student": "Ivy", "Python": 84, "SQL": 80, "Power BI": 86, "AI": 85, "Attendance": 94, "Total": 335, "Average": 83.75, "Grade": "A", "Best Subject": "Power BI", "Weakest Subject": "SQL", "Status": "On Track", "Imputed": ""}, {"Rank": 13, "Student": "Laura", "Python": 83, "SQL": 79, "Power BI": 85, "AI": 84, "Attendance": 93, "Total": 331, "Average": 82.75, "Grade": "A", "Best Subject": "Power BI", "Weakest Subject": "SQL", "Status": "On Track", "Imputed": ""}, {"Rank": 13, "Student": "Ryan", "Python": 81, "SQL": 84, "Power BI": 83, "AI": 83, "Attendance": 92, "Total": 331, "Average": 82.75, "Grade": "A", "Best Subject": "SQL", "Weakest Subject": "Python", "Status": "On Track", "Imputed": "AI"}, {"Rank": 15, "Student": "Michael", "Python": 80, "SQL": 82, "Power BI": 80, "AI": 78, "Attendance": 88, "Total": 320, "Average": 80.0, "Grade": "A", "Best Subject": "SQL", "Weakest Subject": "AI", "Status": "On Track", "Imputed": "Python"}, {"Rank": 16, "Student": "Jack", "Python": 78, "SQL": 76, "Power BI": 82, "AI": 81, "Attendance": 90, "Total": 317, "Average": 79.25, "Grade": "B", "Best Subject": "Power BI", "Weakest Subject": "SQL", "Status": "On Track", "Imputed": ""}, {"Rank": 16, "Student": "Uma", "Python": 79, "SQL": 77, "Power BI": 81, "AI": 80, "Attendance": 89, "Total": 317, "Average": 79.25, "Grade": "B", "Best Subject": "Power BI", "Weakest Subject": "SQL", "Status": "On Track", "Imputed": "Python"}, {"Rank": 18, "Student": "William", "Python": 79, "SQL": 78, "Power BI": 76, "AI": 78, "Attendance": 91, "Total": 311, "Average": 77.75, "Grade": "B", "Best Subject": "Python", "Weakest Subject": "Power BI", "Status": "On Track", "Imputed": "SQL"}, {"Rank": 19, "Student": "Frank", "Python": 75, "SQL": 74, "Power BI": 79, "AI": 80, "Attendance": 91, "Total": 308, "Average": 77.0, "Grade": "B", "Best Subject": "AI", "Weakest Subject": "SQL", "Status": "On Track", "Imputed": ""}, {"Rank": 20, "Student": "Oliver", "Python": 76, "SQL": 73, "Power BI": 75, "AI": 77, "Attendance": 90, "Total": 301, "Average": 75.25, "Grade": "B", "Best Subject": "AI", "Weakest Subject": "SQL", "Status": "On Track", "Imputed": "Power BI"}, {"Rank": 21, "Student": "Bob", "Python": 72, "SQL": 81, "Power BI": 70, "AI": 75, "Attendance": 89, "Total": 298, "Average": 74.5, "Grade": "B", "Best Subject": "SQL", "Weakest Subject": "Power BI", "Status": "Needs Improvement", "Imputed": ""}, {"Rank": 22, "Student": "Thomas", "Python": 74, "SQL": 69, "Power BI": 72, "AI": 75, "Attendance": 84, "Total": 290, "Average": 72.5, "Grade": "B", "Best Subject": "AI", "Weakest Subject": "SQL", "Status": "Needs Improvement", "Imputed": ""}, {"Rank": 23, "Student": "Henry", "Python": 68, "SQL": 72, "Power BI": 75, "AI": 70, "Attendance": 87, "Total": 285, "Average": 71.25, "Grade": "B", "Best Subject": "Power BI", "Weakest Subject": "Python", "Status": "Needs Improvement", "Imputed": ""}, {"Rank": 23, "Student": "Peter", "Python": 69, "SQL": 71, "Power BI": 74, "AI": 71, "Attendance": 86, "Total": 285, "Average": 71.25, "Grade": "B", "Best Subject": "Power BI", "Weakest Subject": "Python", "Status": "Needs Improvement", "Imputed": "AI"}, {"Rank": 25, "Student": "David", "Python": 65, "SQL": 70, "Power BI": 68, "AI": 72, "Attendance": 85, "Total": 275, "Average": 68.75, "Grade": "C", "Best Subject": "AI", "Weakest Subject": "Python", "Status": "Needs Improvement", "Imputed": ""}], "kpis": {"total_students": 25, "avg_attendance": 92.2, "highest_avg": 95.75, "highest_name": "Queen", "lowest_avg": 68.75, "lowest_name": "David", "class_avg": 82.6, "above_85": 10, "below_60": 0}, "insights": ["Queen is the class topper with an average of 95.75 and 100% attendance.", "David has the lowest average (68.75); their weakest subject is Python.", "The class average is 82.60. 10 of 25 students average above 85, and 0 fall below 60.", "AI is the highest-scoring subject (avg 83.76); Python is the lowest (avg 81.60).", "Attendance and average marks show a very strong positive correlation (r = 0.93): students with 95%+ attendance average 91.00 vs 73.93 for those under 90%.", "Perfect attendance: Queen.", "5 students need extra support: Bob, Thomas, Henry, Peter, David.", "Data quality: 9 invalid values (5 missing, 4 zeros) were corrected before analysis."], "issues": [{"Student": "Michael", "Column": "Python", "Original": 0, "Issue": "Zero value", "Imputed value": 80, "Method": "Student's mean of valid subjects"}, {"Student": "Nancy", "Column": "SQL", "Original": "Null", "Issue": "Missing (Null)", "Imputed value": 89, "Method": "Student's mean of valid subjects"}, {"Student": "Oliver", "Column": "Power BI", "Original": "Null", "Issue": "Missing (Null)", "Imputed value": 75, "Method": "Student's mean of valid subjects"}, {"Student": "Peter", "Column": "AI", "Original": 0, "Issue": "Zero value", "Imputed value": 71, "Method": "Student's mean of valid subjects"}, {"Student": "Ryan", "Column": "AI", "Original": "Null", "Issue": "Missing (Null)", "Imputed value": 83, "Method": "Student's mean of valid subjects"}, {"Student": "Sophia", "Column": "Attendance", "Original": "Null", "Issue": "Missing (Null)", "Imputed value": 92, "Method": "Class median attendance"}, {"Student": "Uma", "Column": "Python", "Original": "Null", "Issue": "Missing (Null)", "Imputed value": 79, "Method": "Student's mean of valid subjects"}, {"Student": "William", "Column": "SQL", "Original": 0, "Issue": "Zero value", "Imputed value": 78, "Method": "Student's mean of valid subjects"}, {"Student": "Zara", "Column": "Attendance", "Original": 0, "Issue": "Zero value", "Imputed value": 92, "Method": "Class median attendance"}], "validationRaw": [{"Check": "Every row has a student name", "Passed": true}, {"Check": "Student names are unique", "Passed": true}, {"Check": "Score columns are numeric", "Passed": true}, {"Check": "All scores within 0-100", "Passed": false}, {"Check": "No missing values", "Passed": false}, {"Check": "No zero (invalid) values", "Passed": false}], "validationClean": [{"Check": "Every row has a student name", "Passed": true}, {"Check": "Student names are unique", "Passed": true}, {"Check": "Score columns are numeric", "Passed": true}, {"Check": "All scores within 0-100", "Passed": true}, {"Check": "No missing values", "Passed": true}, {"Check": "No zero (invalid) values", "Passed": true}], "quality": {"rows": 25, "missing": 5, "zeros": 4, "duplicates": 0, "outliersRaw": 4, "outliersClean": 0}};
+const S = D.students;
+const SUBJ = D.subjects;
+const SUBJ_COLORS = { "Python": "#4f46e5", "SQL": "#0ea5a4", "Power BI": "#f59e0b", "AI": "#e11d48" };
+const GRADE_COLORS = { "A+": "#4f46e5", "A": "#0ea5a4", "B": "#f59e0b", "C": "#f97316", "D": "#e11d48", "F": "#991b1b" };
+const CFG = { responsive: true, displaylogo: false, toImageButtonOptions: { format: "png", scale: 2 } };
+
+const $ = id => document.getElementById(id);
+const cssVar = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+const mean = arr => arr.reduce((a, b) => a + b, 0) / arr.length;
+const fmt = (x, d = 1) => Number(x).toFixed(d);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const byName = Object.fromEntries(S.map(d => [d.Student, d]));
+const names = S.map(d => d.Student).sort();
+const topper = S[0];
+const lowest = S.reduce((a, b) => (b.Average < a.Average ? b : a));
+const classAvg = Object.fromEntries([...SUBJ, "Attendance", "Average", "Total"].map(k => [k, mean(S.map(d => d[k]))]));
+
+function layout(title, extra = {}) {
+  const grid = cssVar("--grid"), text = cssVar("--text");
+  const base = {
+    title: { text: title, x: 0.01, xanchor: "left", font: { size: 15 } },
+    paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)",
+    font: { family: "Inter, Segoe UI, system-ui, sans-serif", color: text, size: 12 },
+    margin: { t: 52, r: 16, b: 80, l: 56 },
+    xaxis: { gridcolor: grid, zerolinecolor: grid, linecolor: grid, automargin: true },
+    yaxis: { gridcolor: grid, zerolinecolor: grid, linecolor: grid, automargin: true },
+    legend: { orientation: "h", y: -0.3, yanchor: "top", x: 0 },
+    hoverlabel: { font: { family: "Inter, Segoe UI, sans-serif" } },
+  };
+  for (const [k, v] of Object.entries(extra)) {
+    base[k] = v && typeof v === "object" && !Array.isArray(v) && base[k] ? { ...base[k], ...v } : v;
+  }
+  return base;
+}
+const polar = (range = [50, 100]) => ({
+  bgcolor: "rgba(0,0,0,0)",
+  radialaxis: { range, gridcolor: cssVar("--grid"), linecolor: cssVar("--grid"), tickfont: { size: 10 } },
+  angularaxis: { gridcolor: cssVar("--grid"), linecolor: cssVar("--grid") },
+});
+const plot = (id, data, lay) => Plotly.react($(id), data, lay, CFG);
+const radarTrace = (name, vals, color, dash) => ({
+  type: "scatterpolar", name, r: [...vals, vals[0]], theta: [...SUBJ, SUBJ[0]],
+  fill: dash ? "none" : "toself", opacity: dash ? 1 : 0.6, line: { color, dash: dash ? "dash" : "solid", width: 2 },
+  hovertemplate: "%{theta}: %{r:.1f}<extra>" + esc(name) + "</extra>",
+});
+const gradePill = g => `<span class="pill" style="background:${GRADE_COLORS[g]}">${esc(g)}</span>`;
+
+/* ------------------------------------------------------------------ overview */
+function renderOverview() {
+  const k = D.kpis, t = D.thresholds;
+  const cards = [
+    ["👥", "Total Students", k.total_students, "enrolled", "#4f46e5"],
+    ["📅", "Average Attendance", fmt(k.avg_attendance) + "%", "across the class", "#0ea5a4"],
+    ["🏆", "Highest Average", fmt(k.highest_avg, 2), k.highest_name, "#059669"],
+    ["📉", "Lowest Average", fmt(k.lowest_avg, 2), k.lowest_name, "#e11d48"],
+    ["📊", "Class Average", fmt(k.class_avg, 2), "all subjects", "#f59e0b"],
+    ["⭐", `Above ${t.high}%`, k.above_85, "students", "#7c3aed"],
+    ["⚠️", `Below ${t.low}%`, k.below_60, "students", "#dc2626"],
+  ];
+  $("kpis").innerHTML = cards.map(([icon, label, value, sub, c]) =>
+    `<div class="kpi" style="--c:${c}"><div class="kpi-label">${icon} ${esc(label)}</div>
+     <div class="kpi-value">${esc(value)}</div><div class="kpi-sub">${esc(sub)}</div></div>`).join("");
+
+  $("topperBanner").innerHTML = `<div class="trophy">🏆</div><div><div class="muted">Class topper</div>
+    <b>${esc(topper.Student)}</b> · average ${fmt(topper.Average, 2)} · total ${topper.Total}/400 · attendance ${topper.Attendance}%
+    · best subject ${esc(topper["Best Subject"])}</div>`;
+
+  plot("chSubjectAvg", [{
+    type: "bar", x: SUBJ, y: SUBJ.map(s => classAvg[s]), marker: { color: SUBJ.map(s => SUBJ_COLORS[s]) },
+    text: SUBJ.map(s => fmt(classAvg[s], 2)), textposition: "outside", hovertemplate: "%{x}: %{y:.2f}<extra></extra>",
+  }], layout("Subject-wise Average", { yaxis: { title: "Average marks", range: [0, 100] }, xaxis: { title: "Subject" }, showlegend: false }));
+
+  const grades = D.grades.filter(g => S.some(d => d.Grade === g));
+  plot("chGrade", [{
+    type: "pie", hole: 0.55, labels: grades.map(g => "Grade " + g), values: grades.map(g => S.filter(d => d.Grade === g).length),
+    marker: { colors: grades.map(g => GRADE_COLORS[g]), line: { color: cssVar("--card"), width: 2 } },
+    textinfo: "label+percent", hovertemplate: "%{label}: %{value} students<extra></extra>", sort: false,
+  }], layout("Grade Distribution", { legend: { orientation: "v", x: 1, y: 0.5 } }));
+
+  const totals = S.map(d => d.Total), tMin = Math.min(...totals), tMax = Math.max(...totals);
+  const size = d => 10 + ((d.Total - tMin) / (tMax - tMin || 1)) * 22;
+  const xs = S.map(d => d.Attendance), ys = S.map(d => d.Average);
+  const mx = mean(xs), my = mean(ys);
+  const sxy = xs.reduce((a, x, i) => a + (x - mx) * (ys[i] - my), 0);
+  const sxx = xs.reduce((a, x) => a + (x - mx) ** 2, 0), syy = ys.reduce((a, y) => a + (y - my) ** 2, 0);
+  const slope = sxy / sxx, r = sxy / Math.sqrt(sxx * syy);
+  const xr = [Math.min(...xs), Math.max(...xs)];
+  const bubbles = grades.map(g => {
+    const pts = S.filter(d => d.Grade === g);
+    return {
+      type: "scatter", mode: "markers", name: "Grade " + g, x: pts.map(d => d.Attendance), y: pts.map(d => d.Average),
+      marker: { size: pts.map(size), color: GRADE_COLORS[g], opacity: 0.85, line: { color: cssVar("--card"), width: 1.5 } },
+      customdata: pts.map(d => [d.Student, d.Total, d.Rank]),
+      hovertemplate: "<b>%{customdata[0]}</b><br>Attendance: %{x}%<br>Average: %{y:.2f}<br>Total: %{customdata[1]}<br>Rank: #%{customdata[2]}<extra></extra>",
+    };
+  });
+  bubbles.push({ type: "scatter", mode: "lines", name: `Trend (r = ${fmt(r, 2)})`, x: xr, y: xr.map(x => my + slope * (x - mx)),
+                 line: { dash: "dash", color: cssVar("--muted") }, hoverinfo: "skip" });
+  plot("chScatter", bubbles, layout("Attendance vs Average (bubble = total marks)", {
+    xaxis: { title: "Attendance (%)" }, yaxis: { title: "Average marks" },
+    annotations: [{ x: topper.Attendance, y: topper.Average, text: "🏆 " + esc(topper.Student), showarrow: true, arrowhead: 2,
+                    ax: -50, ay: -28, font: { color: cssVar("--text") }, arrowcolor: cssVar("--gold") }],
+  }));
+
+  plot("chHist", [{
+    type: "histogram", x: S.map(d => d.Average), xbins: { start: 60, end: 100, size: 5 },
+    marker: { color: cssVar("--accent"), line: { color: cssVar("--card"), width: 1 } },
+    hovertemplate: "Average %{x}<br>%{y} students<extra></extra>",
+  }], layout("Distribution of Average Marks", { xaxis: { title: "Average marks" }, yaxis: { title: "Students" }, bargap: 0.06, showlegend: false }));
+
+  plot("chHeat", [{
+    type: "heatmap", z: S.map(d => SUBJ.map(s => d[s])), x: SUBJ, y: S.map(d => d.Student),
+    colorscale: [[0, "#fee2e2"], [0.45, "#fde68a"], [1, "#059669"]], zmin: 60, zmax: 100,
+    texttemplate: "%{z}", hovertemplate: "%{y} · %{x}: %{z}<extra></extra>", colorbar: { title: { text: "Marks" }, thickness: 12 },
+  }], layout("Marks Heatmap (sorted by rank)", { yaxis: { autorange: "reversed", dtick: 1 }, margin: { l: 80, t: 52, r: 10, b: 40 } }));
+
+  $("insights").innerHTML = D.insights.map(s => `<li>${esc(s)}</li>`).join("");
+}
+
+/* ------------------------------------------------------------------ student */
+function renderStudent() {
+  const d = byName[$("studentSel").value] || topper;
+  const isTop = d === topper;
+  const status = d.Status === "On Track" ? `<span class="tag ok">On track</span>` : `<span class="tag warn">Needs improvement</span>`;
+  $("profile").innerHTML = `
+    <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;align-items:center">
+      <div><p class="name">${esc(d.Student)} ${isTop ? "🏆" : ""}</p>
+        <div class="muted">Rank #${d.Rank} of ${S.length} ${isTop ? "· <b style='color:var(--gold)'>Class topper</b>" : ""}</div></div>
+      <div>${gradePill(d.Grade)} ${status}</div>
+    </div>
+    <div class="profile">
+      ${SUBJ.map(s => `<div class="stat"><span>${esc(s)}</span><strong>${d[s]}</strong>
+        <span style="color:${d[s] >= classAvg[s] ? "var(--good)" : "var(--bad)"}">${d[s] >= classAvg[s] ? "▲" : "▼"} ${fmt(Math.abs(d[s] - classAvg[s]))} vs class</span></div>`).join("")}
+      <div class="stat"><span>Total</span><strong>${d.Total}/400</strong></div>
+      <div class="stat"><span>Average</span><strong>${fmt(d.Average, 2)}</strong></div>
+      <div class="stat"><span>Attendance</span><strong>${d.Attendance}%</strong></div>
+      <div class="stat"><span>Best / weakest</span><strong style="font-size:14px">${esc(d["Best Subject"])} / ${esc(d["Weakest Subject"])}</strong></div>
+    </div>
+    ${d.Imputed ? `<p class="muted" style="margin:10px 0 0">ℹ️ Corrected during cleaning: ${esc(d.Imputed)}</p>` : ""}`;
+
+  plot("chStudentBar", [
+    { type: "bar", name: d.Student, x: SUBJ, y: SUBJ.map(s => d[s]), marker: { color: SUBJ.map(s => SUBJ_COLORS[s]) },
+      text: SUBJ.map(s => d[s]), textposition: "outside", hovertemplate: "%{x}: %{y}<extra>" + esc(d.Student) + "</extra>" },
+    { type: "scatter", mode: "lines+markers", name: "Class average", x: SUBJ, y: SUBJ.map(s => classAvg[s]),
+      line: { color: cssVar("--muted"), dash: "dash" }, hovertemplate: "%{x}: %{y:.2f}<extra>Class average</extra>" },
+  ], layout(`${d.Student}: Marks vs Class Average`, { yaxis: { title: "Marks", range: [0, 105] }, xaxis: { title: "Subject" } }));
+
+  plot("chStudentRadar", [
+    radarTrace("Class average", SUBJ.map(s => classAvg[s]), cssVar("--muted"), true),
+    radarTrace(d.Student, SUBJ.map(s => d[s]), "#4f46e5"),
+  ], layout("Subject Profile", { polar: polar(), legend: { orientation: "h", y: -0.12 } }));
+
+  plot("chStudentAtt", [
+    { type: "bar", orientation: "h", name: d.Student, y: ["Average marks", "Attendance %"], x: [d.Average, d.Attendance],
+      marker: { color: "#4f46e5" }, text: [fmt(d.Average, 2), d.Attendance + "%"], textposition: "auto",
+      hovertemplate: "%{y}: %{x}<extra>" + esc(d.Student) + "</extra>" },
+    { type: "bar", orientation: "h", name: "Class average", y: ["Average marks", "Attendance %"], x: [classAvg.Average, classAvg.Attendance],
+      marker: { color: "#cbd5e1" }, text: [fmt(classAvg.Average, 2), fmt(classAvg.Attendance) + "%"], textposition: "auto",
+      hovertemplate: "%{y}: %{x:.2f}<extra>Class average</extra>" },
+  ], layout("Attendance compared with Average Marks", { barmode: "group", xaxis: { range: [0, 100], title: "%" }, margin: { l: 110, b: 90 }, legend: { y: -0.4 } }));
+}
+
+/* ------------------------------------------------------------------ compare */
+function renderCompare() {
+  const a = byName[$("cmpA").value], b = byName[$("cmpB").value], subj = $("cmpSubject").value;
+  const bar = (d, color) => ({ type: "bar", name: d.Student, x: [...SUBJ, "Average"], y: [...SUBJ.map(s => d[s]), d.Average],
+    marker: { color }, text: [...SUBJ.map(s => d[s]), fmt(d.Average, 1)], textposition: "outside",
+    hovertemplate: "%{x}: %{y}<extra>" + esc(d.Student) + "</extra>" });
+  plot("chCompareBar", [bar(a, "#4f46e5"), bar(b, "#e11d48"),
+    { type: "bar", name: "Class average", x: [...SUBJ, "Average"], y: [...SUBJ.map(s => classAvg[s]), classAvg.Average],
+      marker: { color: "#cbd5e1" }, hovertemplate: "%{x}: %{y:.2f}<extra>Class average</extra>" }],
+    layout(`${a.Student} vs ${b.Student}`, { barmode: "group", yaxis: { range: [0, 108], title: "Marks" } }));
+
+  plot("chCompareRadar", [
+    radarTrace("Class average", SUBJ.map(s => classAvg[s]), cssVar("--muted"), true),
+    radarTrace(a.Student, SUBJ.map(s => a[s]), "#4f46e5"),
+    radarTrace(b.Student, SUBJ.map(s => b[s]), "#e11d48"),
+  ], layout("Subject Profiles", { polar: polar(), legend: { orientation: "h", y: -0.12 } }));
+
+  const sorted = [...S].sort((x, y) => y[subj] - x[subj]);
+  const avg = classAvg[subj];
+  plot("chSubjectLine", [
+    { type: "scatter", mode: "lines+markers", name: subj, x: sorted.map(d => d.Student), y: sorted.map(d => d[subj]),
+      line: { color: SUBJ_COLORS[subj], width: 2.5 }, marker: { size: sorted.map(d => (d === a || d === b ? 13 : 7)),
+      color: sorted.map(d => (d === a ? "#4f46e5" : d === b ? "#e11d48" : SUBJ_COLORS[subj])) },
+      hovertemplate: "%{x}: %{y}<extra>" + esc(subj) + "</extra>" },
+    { type: "scatter", mode: "lines", name: `Class average (${fmt(avg, 2)})`, x: [sorted[0].Student, sorted[sorted.length - 1].Student],
+      y: [avg, avg], line: { dash: "dash", color: cssVar("--muted") }, hoverinfo: "skip" },
+  ], layout(`${subj}: Every Student, Highest to Lowest (A & B enlarged)`,
+         { yaxis: { title: "Marks" }, xaxis: { tickangle: -45 }, legend: { y: -0.45 }, margin: { b: 110 } }));
+
+  plot("chBox", SUBJ.map(s => ({ type: "box", name: s, y: S.map(d => d[s]), text: S.map(d => d.Student), boxpoints: "all",
+    jitter: 0.4, pointpos: 0, marker: { color: SUBJ_COLORS[s], size: 5 }, line: { width: 1.5 },
+    hovertemplate: "%{text}: %{y}<extra>" + esc(s) + "</extra>" })),
+    layout("Spread of Marks by Subject (Box Plot)", { yaxis: { title: "Marks" }, showlegend: false }));
+
+  plot("chArea", SUBJ.map(s => ({ type: "scatter", mode: "lines", stackgroup: "one", name: s, x: S.map(d => d.Student), y: S.map(d => d[s]),
+    line: { width: 0.6, color: SUBJ_COLORS[s] }, hovertemplate: "%{x} · " + esc(s) + ": %{y}<extra></extra>" })),
+    layout("Total Marks Composition (Stacked Area, Rank Order)",
+         { yaxis: { title: "Total marks" }, xaxis: { tickangle: -45 }, hovermode: "x unified", legend: { y: -0.45 }, margin: { b: 110 } }));
+}
+
+/* ------------------------------------------------------------------ rankings */
+const COLS = [["Rank", "Rank"], ["Student", "Student"], ...SUBJ.map(s => [s, s]), ["Total", "Total"], ["Average", "Average"],
+              ["Grade", "Grade"], ["Attendance", "Attend. %"], ["Status", "Status"]];
+const TEXT_COLS = ["Student", "Grade", "Status"];
+function filteredStudents() {
+  const q = $("search").value.trim().toLowerCase(), minAvg = +$("minAvg").value, minAtt = +$("minAtt").value;
+  const grade = $("gradeSel").value, key = $("sortSel").value, dir = $("orderSel").value === "asc" ? 1 : -1;
+  return S.filter(d => d.Student.toLowerCase().includes(q) && d.Average >= minAvg && d.Attendance >= minAtt && (grade === "All" || d.Grade === grade))
+          .sort((x, y) => (typeof x[key] === "string" ? x[key].localeCompare(y[key]) : x[key] - y[key]) * dir);
+}
+function renderRankings() {
+  $("minAvgOut").textContent = $("minAvg").value;
+  $("minAttOut").textContent = $("minAtt").value + "%";
+  const rows = filteredStudents(), key = $("sortSel").value, dir = $("orderSel").value === "asc" ? "▲" : "▼";
+  const metric = $("metricSel").value;
+  $("rankCount").textContent = `Showing ${rows.length} of ${S.length} students`;
+  $("rankTable").innerHTML = `<thead><tr>${COLS.map(([k, label]) =>
+      `<th data-key="${k}" class="${k === key ? "sorted" : ""} ${TEXT_COLS.includes(k) ? "" : "num"}" data-dir="${dir}">${esc(label)}</th>`).join("")}</tr></thead>
+    <tbody>${rows.map(d => `<tr data-name="${esc(d.Student)}" class="${d === topper ? "is-topper" : d === lowest ? "is-lowest" : ""}">
+      <td class="num">${d.Rank}</td><td>${d === topper ? "🏆 " : ""}${esc(d.Student)}</td>
+      ${SUBJ.map(s => `<td class="num">${d[s]}</td>`).join("")}<td class="num">${d.Total}</td><td class="num">${fmt(d.Average, 2)}</td>
+      <td>${gradePill(d.Grade)}</td><td class="num">${d.Attendance}</td>
+      <td>${d.Status === "On Track" ? '<span class="tag ok">On track</span>' : '<span class="tag warn">Needs help</span>'}</td></tr>`).join("")}</tbody>`;
+  $("rankTable").querySelectorAll("th").forEach(th => th.onclick = () => {
+    const k = th.dataset.key;
+    if ($("sortSel").value === k) $("orderSel").value = $("orderSel").value === "asc" ? "desc" : "asc";
+    else { $("sortSel").value = k; $("orderSel").value = k === "Rank" || TEXT_COLS.includes(k) ? "asc" : "desc"; }
+    renderRankings();
+  });
+  $("rankTable").querySelectorAll("tbody tr").forEach(tr => tr.onclick = () => { $("studentSel").value = tr.dataset.name; showTab("student"); });
+
+  plot("chRank", [{
+    type: "bar", x: rows.map(d => d.Student), y: rows.map(d => d[metric]),
+    marker: { color: rows.map(d => (d === topper ? "#d97706" : SUBJ_COLORS[metric] || "#4f46e5")) },
+    text: rows.map(d => (metric === "Average" ? fmt(d[metric], 1) : d[metric])), textposition: "outside",
+    hovertemplate: "%{x}<br>" + esc(metric) + ": %{y}<extra></extra>",
+  }], layout(`${metric} for the ${rows.length} filtered students (gold = topper)`,
+     { yaxis: { title: metric, range: [0, metric === "Total" ? 420 : 108] }, xaxis: { tickangle: -45 }, showlegend: false }));
+}
+
+/* ------------------------------------------------------------------ quality */
+function renderQuality() {
+  const q = D.quality;
+  const cards = [
+    ["🧾", "Raw rows", q.rows, "students in CSV", "#4f46e5"],
+    ["❓", "Missing values", q.missing, "Null cells", "#f59e0b"],
+    ["0️⃣", "Zero values", q.zeros, "treated as invalid", "#e11d48"],
+    ["👯", "Duplicates", q.duplicates, "rows removed", "#0ea5a4"],
+    ["📌", "Outliers (raw)", q.outliersRaw, "IQR rule", "#7c3aed"],
+    ["✅", "Outliers (clean)", q.outliersClean, "after cleaning", "#059669"],
+  ];
+  $("qualityKpis").innerHTML = cards.map(([icon, label, value, sub, c]) =>
+    `<div class="kpi" style="--c:${c}"><div class="kpi-label">${icon} ${esc(label)}</div>
+     <div class="kpi-value">${value}</div><div class="kpi-sub">${esc(sub)}</div></div>`).join("");
+  const mark = ok => (ok ? '<span class="tag ok">Pass</span>' : '<span class="tag warn">Fail</span>');
+  $("validationTable").innerHTML = `<thead><tr><th>Check</th><th>Raw</th><th>Cleaned</th></tr></thead><tbody>${
+    D.validationRaw.map((v, i) => `<tr><td>${esc(v.Check)}</td><td>${mark(v.Passed)}</td><td>${mark(D.validationClean[i].Passed)}</td></tr>`).join("")}</tbody>`;
+  $("issueTable").innerHTML = `<thead><tr><th>Student</th><th>Column</th><th>Original</th><th>Issue</th><th class="num">New value</th><th>Method</th></tr></thead><tbody>${
+    D.issues.map(r => `<tr><td>${esc(r.Student)}</td><td>${esc(r.Column)}</td><td>${esc(r.Original)}</td><td><span class="tag warn">${esc(r.Issue)}</span></td>
+      <td class="num"><b>${r["Imputed value"]}</b></td><td class="muted">${esc(r.Method)}</td></tr>`).join("")}</tbody>`;
+}
+
+/* ------------------------------------------------------------------ app shell */
+const RENDER = { overview: renderOverview, student: renderStudent, compare: renderCompare, rankings: renderRankings, quality: renderQuality };
+let current = null;
+
+function showTab(name) {
+  if (!RENDER[name]) name = "overview";
+  current = name;
+  document.querySelectorAll(".page").forEach(p => (p.hidden = p.id !== name));
+  document.querySelectorAll("#tabs button").forEach(b => b.classList.toggle("active", b.dataset.tab === name));
+  RENDER[name]();
+  try { history.replaceState(null, "", "#" + name); } catch (e) { /* not allowed for file:// in some browsers */ }
+  window.scrollTo(0, 0);
+}
+
+function setTheme(theme, save = true) {
+  document.documentElement.dataset.theme = theme;
+  $("themeBtn").textContent = theme === "dark" ? "☀️ Light" : "🌙 Dark";
+  if (save) { try { localStorage.setItem("spd-theme", theme); } catch (e) { /* storage blocked */ } }
+  if (current) RENDER[current]();
+}
+
+function downloadCSV() {
+  const cols = ["Rank", "Student", ...SUBJ, "Attendance", "Total", "Average", "Grade", "Best Subject", "Weakest Subject", "Status", "Imputed"];
+  const cell = v => (/[",\n]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : v);
+  const csv = [cols.join(","), ...S.map(d => cols.map(c => cell(d[c] ?? "")).join(","))].join("\n");
+  const a = Object.assign(document.createElement("a"), {
+    href: URL.createObjectURL(new Blob([csv], { type: "text/csv" })), download: "student_performance_processed.csv" });
+  document.body.appendChild(a); a.click(); a.remove();
+}
+
+function fillSelect(id, options, value) {
+  $(id).innerHTML = options.map(o => `<option value="${esc(o)}">${esc(o)}</option>`).join("");
+  $(id).value = value;
+}
+
+function init() {
+  fillSelect("studentSel", names, topper.Student);
+  fillSelect("cmpA", names, topper.Student);
+  fillSelect("cmpB", names, lowest.Student);
+  fillSelect("cmpSubject", SUBJ, SUBJ[0]);
+  fillSelect("gradeSel", ["All", ...D.grades], "All");
+  $("sortSel").innerHTML = COLS.filter(([k]) => k !== "Status").map(([k, l]) => `<option value="${k}">${esc(l)}</option>`).join("");
+  fillSelect("metricSel", ["Average", ...SUBJ, "Attendance", "Total"], "Average");
+
+  $("studentSel").onchange = renderStudent;
+  ["cmpA", "cmpB", "cmpSubject"].forEach(id => ($(id).onchange = renderCompare));
+  ["search", "minAvg", "minAtt"].forEach(id => ($(id).oninput = renderRankings));
+  ["gradeSel", "sortSel", "orderSel", "metricSel"].forEach(id => ($(id).onchange = renderRankings));
+  $("resetBtn").onclick = () => {
+    $("search").value = ""; $("minAvg").value = 60; $("minAtt").value = 80; $("gradeSel").value = "All";
+    $("sortSel").value = "Rank"; $("orderSel").value = "asc"; $("metricSel").value = "Average"; renderRankings();
+  };
+  document.querySelectorAll("#tabs button").forEach(b => (b.onclick = () => showTab(b.dataset.tab)));
+  $("themeBtn").onclick = () => setTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark");
+  $("csvBtn").onclick = downloadCSV;
+  $("printBtn").onclick = () => window.print();
+  $("footer").textContent = `Built from student_performance.csv · ${S.length} students · generated ${D.generated}`;
+
+  const [tab, mode] = location.hash.slice(1).split("&");
+  let theme = mode === "dark" || mode === "light" ? mode : null;
+  if (!theme) { try { theme = localStorage.getItem("spd-theme"); } catch (e) { theme = null; } }
+  if (!theme) theme = window.matchMedia && matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  setTheme(theme, false);
+  showTab(tab || "overview");
+}
+
+// Wait for the web font so Plotly measures legend/label widths with the real typeface.
+if (window.Plotly) (document.fonts ? document.fonts.ready : Promise.resolve()).then(init);
+else document.body.innerHTML = '<p style="padding:40px;font-family:sans-serif">Plotly.js could not be loaded. Check your internet connection and reload.</p>';
+</script>
+</body>
+</html>

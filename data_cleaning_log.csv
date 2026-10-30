@@ -1,0 +1,10 @@
+Student,Column,Original,Issue,Imputed value,Method
+Michael,Python,0,Zero value,80,Student's mean of valid subjects
+Nancy,SQL,Null,Missing (Null),89,Student's mean of valid subjects
+Oliver,Power BI,Null,Missing (Null),75,Student's mean of valid subjects
+Peter,AI,0,Zero value,71,Student's mean of valid subjects
+Ryan,AI,Null,Missing (Null),83,Student's mean of valid subjects
+Sophia,Attendance,Null,Missing (Null),92,Class median attendance
+Uma,Python,Null,Missing (Null),79,Student's mean of valid subjects
+William,SQL,0,Zero value,78,Student's mean of valid subjects
+Zara,Attendance,0,Zero value,92,Class median attendance
